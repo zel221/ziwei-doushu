@@ -282,7 +282,7 @@ cd ziwei-doushu
 # 安装依赖
 npm install
 
-# 配置环境变量（只看排盘可以跳过；AI 配置仅在你自己实现了 /api/* 接口时才用得上）
+# 配置环境变量（只看排盘可以跳过；AI 解读需要在 .env.local 填 Key）
 cp .env.example .env.local
 
 # 启动开发服务器
@@ -298,7 +298,7 @@ npm test            # 排盘引擎回归（768 盘 × 紫微铁律、夏令时�
 
 每次 push 与 PR 都会在 GitHub Actions 上跑同一套（见 [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)）。
 
-> **注意：开源版不含后端 API 路由。**排盘、命盘展示、合盘起盘都在浏览器里用本仓库的引擎完成，**不需要任何 API Key**。AI 解读（`/api/interpret`）和合盘 AI 分析（`/api/heming`）需要你自己实现接口；没实现之前，这两处会直接提示「开源版不含该接口」，配置 API Key 也不会变成可用（#30 就是这个原因）。
+> **排盘不需要 API Key。**命盘展示、合盘起盘都在浏览器里完成。AI 解读（`POST /api/interpret`）和合盘分析（`POST /api/heming`）会把命盘摘要发给 `.env.local` 里配置的 OpenAI 兼容模型（默认 xAI Grok，见 `.env.example`）。未配置 Key 时这两处返回 503，面板提示解读失败，而不会再把接口当成不存在。这不是线上站的断语库或商业提示词。
 
 ---
 
@@ -387,9 +387,9 @@ npm test            # 排盘引擎回归（768 盘 × 紫微铁律、夏令时�
 | | 内容 |
 |---|---|
 | ✅ **开源** | 排盘引擎（`lib/ziwei/`）、古籍公版原文（`lib/classics/`）、SEO 知识图谱（`lib/seo/`）、Demo 界面、51.8 万样本数据集、13 维解读数据集 v4.0 |
-| ❌ **不开源** | 断语库（`lib/ziwei/db-analysis.ts` 是占位，线上是上万行的 13 主题断语）、AI 解读 prompt、后端 API（`/api/interpret` 等）、用户系统（登录 / 会员 / 支付）、服务端安全（签名、防刷、水印）、部署配置 |
+| ❌ **不开源** | 断语库（`lib/ziwei/db-analysis.ts` 是占位，线上是上万行的 13 主题断语）、线上 AI 解读 prompt、用户系统（登录 / 会员 / 支付）、服务端安全（签名、防刷、水印）、部署配置 |
 
-如果你需要 AI 解读能力，可以参考 `lib/ziwei/patterns.ts` 和 `heming-knowledge.ts` 里的知识库，结合任意 LLM 自行构建 prompt。
+仓库里的 `/api/interpret` 与 `/api/heming` 只是一层 OpenAI 兼容转发：自己写的短提示词加上命盘摘要，方便本地接 Grok / DeepSeek。线上那套提示词和断语仍然不在这里。需要自己扩展时，可以参考 `lib/ziwei/patterns.ts` 和 `heming-knowledge.ts`。
 
 ---
 

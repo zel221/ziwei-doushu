@@ -76,11 +76,11 @@ npm run typecheck    # TypeScript check
 npm test             # charting regression tests
 ```
 
-**No API key is needed for charting.** The open-source version contains **no backend routes**: AI interpretation (`/api/interpret`) and compatibility analysis (`/api/heming`) return 404 until you implement them yourself.
+**No API key is needed for charting.** AI interpretation (`POST /api/interpret`) and compatibility analysis (`POST /api/heming`) call an OpenAI-compatible chat model (xAI Grok by default; see `.env.example`). Without a key they return 503. The routes send a short original prompt plus a chart summary — not the commercial site's prompts.
 
 ## What is not included
 
-The interpretation database (`lib/ziwei/db-analysis.ts` is a placeholder), AI prompts, all `/api/*` backend routes, user accounts, payments, and deployment configuration.
+The interpretation database (`lib/ziwei/db-analysis.ts` is a placeholder), the commercial site's AI prompts, user accounts, payments, and deployment configuration. The repo does include a minimal `/api/interpret` and `/api/heming` proxy.
 
 ## Interpretation dataset v4.0 (674,976 charts × 13 topics, 2026-10-15)
 

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart } from '@/lib/ziwei/types';
+import { flushSsePending, pushSseChunk } from '@/lib/ai/parse-sse';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -54,30 +55,37 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let assistantText = '';
+      let pendingLine = '';
 
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.delta?.text ?? '';
-              assistantText += delta;
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: assistantText };
-                return updated;
-              });
-            } catch { /* skip */ }
-          }
+      const applyDelta = (data: string) => {
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.delta?.text ?? '';
+          if (typeof delta !== 'string' || !delta) return;
+          assistantText += delta;
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+            return updated;
+          });
+        } catch { /* 跳过坏事件 */ }
+      };
+
+      try {
+        let finished = false;
+        while (!finished) {
+          const { done, value } = await reader.read();
+          const parsed = done
+            ? flushSsePending(pendingLine + decoder.decode())
+            : pushSseChunk(pendingLine, decoder.decode(value, { stream: true }));
+          if (!done) pendingLine = parsed.pending;
+          for (const data of parsed.events) applyDelta(data);
+          finished = done || parsed.done;
         }
+      } finally {
+        reader.cancel().catch(() => {});
       }
     } catch (e) {
       const missing = e instanceof Error && e.message === 'api-missing';
